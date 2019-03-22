@@ -2,20 +2,17 @@ inwx-fritzbox-dyndns
 ====================
 
 Forked from Florian-t
-https://github.com/florian-t/inwx-fritzbox-dyndns
+<https://github.com/florian-t/inwx-fritzbox-dyndns>
 
-Based on a Script by Thomas Klumpp: http://www.thomas-klumpp.de/2013/02/02/dyndns-bei-inwx-de-via-xml-rpc-api-mit-php/
-but this side is not available any more see it in archive: https://web.archive.org/web/20150916190907/http://www.thomas-klumpp.de/2013/02/02/dyndns-bei-inwx-de-via-xml-rpc-api-mit-php/
+Based on a Script by Thomas Klumpp: <http://www.thomas-klumpp.de/2013/02/02/dyndns-bei-inwx-de-via-xml-rpc-api-mit-php/>
+but this side is not available any more see it in archive: <https://web.archive.org/web/20150916190907/http://www.thomas-klumpp.de/2013/02/02/dyndns-bei-inwx-de-via-xml-rpc-api-mit-php/>
 
-uses the Inwx api the necessary Domrobot.php is included in the repository
+uses the Inwx api. The necessary Domrobot.php is included in the repository
 
 Usage
 ----
-
-update URL in the Fritzbox
-https://@@@url_of_my_php_xmlrpc_able_host@@@/update-inwx-get.php?user=<username>&password=<pass>&ip4addr=<ipaddr>&ip6addr=<ip6addr>
-
-fill in the necessary fields in the config.inc.php
+replace everything marked with `@@@` in the file `config.inc.php` and in the update URL for the Fritzbox
+`https://@@@url_of_my_php_xmlrpc_able_host@@@/update-inwx-get.php?user=<username>&password=<pass>&ip4addr=<ipaddr>&ip6addr=<ip6addr>`
 
 Requirements
 ----
