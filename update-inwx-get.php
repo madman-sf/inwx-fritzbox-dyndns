@@ -2,9 +2,11 @@
 /*
  * update-inwx.php - Update INWX Nameserver-Record
  * 
- * Mit diesem Script kann man einen Nameserver-Record beim Provider inwx.de updaten.
+ * This script updates the Nameserver-Record at the inwx.de provider.
  *   
  * by Thomas klumpp
+ * mod by Florian-t
+ * mod by Sven Foerster
  */
 
 header('Content-type: text/plain; charset=utf-8');
@@ -13,18 +15,13 @@ if ($debug) {
     ini_set("error_log", "php-error.log");
     error_reporting(E_ALL);
 }
-require "domrobot.class.php";
+require "Domrobot.php";
 require "config.inc.php";
 
 // globals
-$domrobot = new domrobot(APIURL); 
+$domrobot = new INWX\Domrobot($addr); 
 
 // GET variables from URL
-if (isset($_GET['domain'])) {
-    $domain = filter_input(INPUT_GET, 'domain', FILTER_SANITIZE_STRING);
-} else {
-    abortOnError(400, 'No target domain specified');
-}
 if (isset($_GET['ip4addr'])) {
 	$ip4addr = filter_input(INPUT_GET, 'ip4addr', FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
     if (!$ip4addr) abortOnError(400, 'Invalid IPv4');
@@ -34,62 +31,69 @@ if (isset($_GET['ip6addr'])) {
     if (!$ip6addr) abortOnError(400, 'Invalid IPv6');
 }
 
+
 // get username and password from $_SERVER
-if (isset($_SERVER['PHP_AUTH_USER'])) {
-    $dynDomainUser = filter_var($_SERVER['PHP_AUTH_USER'], FILTER_SANITIZE_STRING);
+if (isset($_GET['user'])) {
+    $dynDomainUser = filter_var($_GET['user'], FILTER_SANITIZE_STRING);
 } else {
     abortOnError(400, 'No Username provided');
 }
-if (isset($_SERVER['PHP_AUTH_PW'])) {
-    $dynDomainPass = filter_var($_SERVER['PHP_AUTH_PW'], FILTER_SANITIZE_STRING);
+if (isset($_GET['password'])) {
+    $dynDomainPass = filter_var($_GET['password'], FILTER_SANITIZE_STRING);
 } else {
     abortOnError(400, 'No password provided');
 }
 
 // Main
 try {
-    if (array_key_exists($domain, $domains) && $domains[$domain]['active']) {
-        if ($dynDomainUser === $domains[$domain]['usr'] && $dynDomainPass === $domains[$domain]['pass']) {   	
-            // login
-        	$res = connect($inwxUser, $inwxPassword);
-        	
-        	// update ipv4 if requested
-        	if (isset($ip4addr)) {
-        		$recordId = requestRecordId($res, $domain, 'ipv4');
-        		updateRecord($res, $recordId, $ip4addr);
-        	}
-        	
-        	// update ipv6 if requested
-        	if (isset($ip6addr)) {
-        		$recordId = requestRecordId($res, $domain, 'ipv6');
-        		updateRecord($res, $recordId, $ip6addr);
-        	}
-        	
-        	// done, logout
-        	$domrobot->logout();  
-        } else {
-            abortOnError(403, 'wrong username or password.');      
-        }   
-    }  else {
-        abortOnError(400, 'missing domain or inactive domain'); // missing domain or inactive domain
-    }
-  
+	if ($dynDomainUser === $usr && $dynDomainPass === $pass) {
+		foreach ($domains as $domain) {
+			updateDomain($inwxUser, $inwxPassword, $ip4addr, $ip6addr, $domain);
+		}
+	} else {
+		abortOnError(403, 'wrong username or password.');      
+	}   
 } catch (Exception $e) {
 	error_log($e->getMessage(), 0, 'php-error.log');
 }
 
 /**
- * Fragt die eindeutige Nameserver-Record ID ab
+ * @brief updates the domain name
+ * @param String $inwxUser
+ * @param String $inwxPassword
+ * @param String $ip4addr [optional]
+ * @param String $ip6addr [optional]
+ * @param String $domain
+ */
+function updateDomain($inwxUser, $inwxPassword, $ip4addr, $ip6addr, $domain) {
+	global $domrobot;
+    // login
+    $res = connect($inwxUser, $inwxPassword);  	
+    // update ipv4 if requested
+    if (isset($ip4addr)) {
+        $recordId = requestRecordId($res, $domain, 'ipv4', $ip4addr);
+    }
+    // update ipv6 if requested
+    if (isset($ip6addr)) {
+
+        $recordId = requestRecordId($res, $domain, 'ipv6', $ip6addr);
+    }
+    // done, logout
+    $domrobot->logout();  
+}
+
+/**
+ * Gets the unique Nameserver-Record ID
  *
  * @param array $res Response from login
- * @param String $domain enthält den abzufragenden Domainnamen
+ * @param String $domain
  * @param String $type which IP type to query, either ipv4 or ipv6
- * @return int ID liefert die unique ID des Nameserver-Records
+ * @return int ID unique ID of Nameserver-Records
  */
-function requestRecordId($res, $domain, $type) {
+function requestRecordId($res, $domain, $type, $ipAddr) {
 	global $domrobot;
 	
-	//domain zerlegen
+	//domain splitting
 	$domain_exploded = explode(".", $domain);
 	$domain_exploded_length = count($domain_exploded);
 	$domain = $domain_exploded[$domain_exploded_length - 2] . "." . $domain_exploded[$domain_exploded_length - 1];
@@ -103,39 +107,38 @@ function requestRecordId($res, $domain, $type) {
 		$meth = "info";
 		$params = array();
 		$params['domain'] = $domain;
-		$params['name'] = $name;
+		
 		$res = $domrobot->call($obj,$meth,$params);
 		
 		if ($type == "ipv4"){
 			foreach ($res['resData']['record'] as $record) {
 				if ($record['type'] == 'A') {
 					$recordId = $record['id'];
+					updateRecord($res, $recordId, $ipAddr);
 				}
 			}
 		} else if ($type == "ipv6") {
 			foreach ($res['resData']['record'] as $record) {
 				if ($record['type'] == 'AAAA') {
 					$recordId = $record['id'];
+					updateRecord($res, $recordId, $ipAddr);
 				}
 			}
 		} else 
 			throw new Exception('unknown IP type');
 		
-		if ($recordId != "")
-			return $recordId;
-		else
-			throw new Exception('domain or name not found');
+		return;
 	} else {
-		throw new Exception('connection error occured');
+		throw new Exception('connection error occurred');
 	}
 }
 
 /**
- * Setzt die IP-Adresse in den entsprechenen Nameserver-Record
+ * Set IP-Address in according Nameserver-Record
  *
  * @param array $res Response from login
- * @param int $recordId enthält die unique ID des Nameserver-Records
- * @param String $ip4addr enthält die zu setzende IP-Adresse
+ * @param int $recordId unique ID of Nameserver-Records
+ * @param String $ipAddr contains IP-Address
  */
 function updateRecord($res, $recordId, $ipAddr) {
 	global $domrobot;
@@ -149,7 +152,7 @@ function updateRecord($res, $recordId, $ipAddr) {
 		$params['content'] = $ipAddr;
 		$res = $domrobot->call($obj,$meth,$params);
 	} else {
-		throw new Exception('connection error occured');
+		throw new Exception('connection error occurred');
 	}
 }
 
@@ -164,10 +167,10 @@ function connect($user, $password) {
 }
 
 /**
-* Send Header to indicate some error so Fritzbox can detect failure
+* Send Header to indicate some error so FritzBox can detect failure
 */
 function abortOnError($httpResponse, $message) {
-    // backwards compatibilty for php<5.4  
+    // backwards compatibility for php<5.4  
     if (!function_exists('http_response_code')) {
         function http_response_code($response) {
             header('none', false, $response);

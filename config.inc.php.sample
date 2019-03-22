@@ -1,26 +1,21 @@
 <?php
 
 // set your inwx username and password here
-$inwxUser = '';
-$inwxPassword = '';
+$inwxUser = '@@@inww_username@@@';
+$inwxPassword = '@@@inww_password@@@';
 
-define('APIURL', 'https://api.domrobot.com/xmlrpc/');
+$addr = "https://api.domrobot.com/xmlrpc/";
+// for debug purposes
+//$addr = "https://api.ote.domrobot.com/xmlrpc/";
 
 $debug = false;
 
 $domains = array();
-$domains['host.example.com'] = array(
-    "active" => true,
-    "usr" => "username",
-    "pass" => "somePass"
-);
+$usr = "@@@fritzbox_user_entry@@@";
+$pass = "@@@fritzbox_password_entry@@@";
 
-/*
-$domains['host2.example.com'] = array(
-    "active" => true,
-    "usr" => "username",
-    "pass" => "somePass"
-);
-*/
-
+$domains[1] = "@@@domain.one@@@";
+//$domains[2] = "@@@domain.two@@@";
+//$domains[3] = "@@@domain.three@@@";
+// ...
 ?>
